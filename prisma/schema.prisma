@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["referentialIntegrity"]
+}
+
+datasource db {
+    provider             = "mongodb"
+    // NOTE: When using postgresql, mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+    // Further reading: 
+    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+    url                  = env("DATABASE_URL")
+    referentialIntegrity = "prisma"
+}
+
+// Necessary for Next auth
+model Account {
+    id                String  @id @default(auto()) @map("_id") @db.ObjectId
+    userId            String
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String? @db.String
+    access_token      String? @db.String
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? @db.String
+    session_state     String?
+    user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+    @@map("accounts")
+}
+
+model Session {
+    id           String   @id @default(auto()) @map("_id") @db.ObjectId
+    sessionToken String   @unique
+    userId       String
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("sessions")
+}
+
+model User {
+    id            String    @id @default(auto()) @map("_id") @db.ObjectId
+    name          String?
+    email         String?   @unique
+    emailVerified DateTime?
+    image         String?
+    accounts      Account[]
+    sessions      Session[]
+    Invoice       Invoice[]
+
+    @@map("users")
+}
+
+model VerificationToken {
+    identifier String   @id @default(auto()) @map("_id") @db.ObjectId
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+    @@map("verificationtokens")
+}
+
+model Invoice {
+    id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+    clientName          String
+    clientEmail         String
+    clientStreetAdress  String
+    clientCity          String
+    clientPostCode      String
+    clientCountry       String
+    senderStreetAddress String
+    senderCity          String
+    senderPostCode      String
+    senderCountry       String
+    invoiceNumber       String   @unique @default(uuid()) 
+    invoiceDate         DateTime
+    paymentTerms        String
+    description         String
+    status              Status
+    items               Item[]
+    user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId              String
+
+    @@map("invoices")
+}
+
+enum Status {
+    DRAFT
+    PENDING
+    PAID
+}
+
+model Item {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    name      String
+    quantity  Int
+    price     Int
+    Invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+    invoiceId String?  @db.ObjectId
+}
